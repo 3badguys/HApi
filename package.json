@@ -1,0 +1,22 @@
+{
+  "name": "HApi",
+  "version": "1.0.0",
+  "description": "Docker orchestration stack for Home Assistant — includes MQTT, Zigbee2MQTT, Node-RED, ESPHome, and Wyoming voice",
+  "private": true,
+  "scripts": {
+    "setup": "node scripts/setup.js",
+    "generate-config": "node scripts/generate-config.js",
+    "ha:up": "docker compose -f homeassistant/docker-compose.yml up -d",
+    "ha:down": "docker compose -f homeassistant/docker-compose.yml down",
+    "ha:logs": "docker compose -f homeassistant/docker-compose.yml logs -f",
+    "ha:restart": "docker compose -f homeassistant/docker-compose.yml restart",
+    "voice:up": "docker compose -f voice/docker-compose.yml up -d",
+    "voice:down": "docker compose -f voice/docker-compose.yml down",
+    "voice:logs": "docker compose -f voice/docker-compose.yml logs -f",
+    "voice:restart": "docker compose -f voice/docker-compose.yml restart",
+    "all:up": "npm run ha:up && npm run voice:up",
+    "all:down": "npm run ha:down && npm run voice:down"
+  },
+  "keywords": ["home-assistant", "mqtt", "zigbee2mqtt", "nodered", "esphome", "voice", "wyoming"],
+  "license": "MIT"
+}

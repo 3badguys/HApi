@@ -1,0 +1,91 @@
+# ============================================================
+# Voice Services Stack — Wyoming Protocol Trio
+#
+# Network design:
+#   - All voice services share the bridge network "shared_voice_net"
+#   - HA accesses Wyoming ports via localhost (same host) or host IP
+#   - Ports: openWakeWord=10400, Vosk=10300, Piper=10200
+#
+# HA integration:
+#   Settings → Devices & Services → Add Integration → Wyoming Protocol
+#   Host: localhost (same host) or host IP
+#   Fill in the corresponding port for each service
+# ============================================================
+
+services:
+  # ------------------------------------------------------------------
+  # openWakeWord — Wake word detection engine
+  # Port: 10400
+  # Custom models: place .tflite files in ./openwakeword/custom/
+  # ------------------------------------------------------------------
+  openwakeword:
+    image: rhasspy/wyoming-openwakeword:latest
+    container_name: voice-openwakeword
+    restart: unless-stopped
+    ports:
+      - "${OPENWAKEWORD_PORT:-10400}:10400"
+    volumes:
+      - ./openwakeword/custom:/custom
+    command:
+      - --custom-model-dir
+      - /custom
+      - --threshold
+      - "0.5"
+      - --uri
+      - tcp://0.0.0.0:10400
+    networks:
+      - shared_voice_net
+
+  # ------------------------------------------------------------------
+  # Vosk — Offline speech-to-text engine (STT)
+  # Port: 10300
+  # Models: download, unzip, and place under ./vosk/models/<model-name>/
+  # ------------------------------------------------------------------
+  vosk:
+    image: rhasspy/wyoming-vosk:latest
+    container_name: voice-vosk
+    restart: unless-stopped
+    ports:
+      - "${VOSK_PORT:-10300}:10300"
+    volumes:
+      - ./vosk/models:/models
+    command:
+      - --model-dir
+      - /models
+      - --model-name
+      - "${VOSK_MODEL:-vosk-model-small-cn-0.22}"
+      - --uri
+      - tcp://0.0.0.0:10300
+    networks:
+      - shared_voice_net
+
+  # ------------------------------------------------------------------
+  # Piper — Offline text-to-speech engine (TTS)
+  # Port: 10200
+  # Models: download .onnx + .json into ./piper/models/
+  # ------------------------------------------------------------------
+  piper:
+    image: rhasspy/wyoming-piper:latest
+    container_name: voice-piper
+    restart: unless-stopped
+    ports:
+      - "${PIPER_PORT:-10200}:10200"
+    volumes:
+      - ./piper/models:/data
+    command:
+      - --data-dir
+      - /data
+      - --voice
+      - "${PIPER_VOICE:-zh_CN-huayan-medium}"
+      - --uri
+      - tcp://0.0.0.0:10200
+    networks:
+      - shared_voice_net
+
+# ------------------------------------------------------------------
+# Custom bridge network
+# ------------------------------------------------------------------
+networks:
+  shared_voice_net:
+    name: shared_voice_net
+    driver: bridge

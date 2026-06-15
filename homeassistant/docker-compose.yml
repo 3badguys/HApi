@@ -1,0 +1,119 @@
+# ============================================================
+# Home Assistant — Smart Home Core Services Stack
+#
+# Network design:
+#   - HA & ESPHome use host network mode to ensure reliable
+#     device discovery, USB passthrough, and Zigbee coordinator access.
+#   - Mosquitto, Zigbee2MQTT, and Node-RED share the custom bridge
+#     network "shared_ha_net" to reduce port conflicts and allow
+#     container-name-based communication.
+# ============================================================
+
+services:
+  # ------------------------------------------------------------------
+  # Home Assistant — Core smart home platform
+  # Network: host (for device discovery & USB passthrough)
+  # Web: http://<host-IP>:8123
+  # ------------------------------------------------------------------
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: ha-core
+    network_mode: host
+    restart: unless-stopped
+    privileged: true
+    environment:
+      - TZ=${TIMEZONE:-Asia/Shanghai}
+    volumes:
+      - ./config:/config
+      - /run/dbus:/run/dbus:ro
+    # devices:  # Uncomment to passthrough USB devices
+    #   - /dev/ttyUSB0:/dev/ttyUSB0
+    #   - /dev/ttyACM0:/dev/ttyACM0
+
+  # ------------------------------------------------------------------
+  # Mosquitto — MQTT broker (communication hub for Zigbee/ESPHome)
+  # Network: shared_ha_net
+  # Ports: 1883 (MQTT), 9001 (WebSocket)
+  # ------------------------------------------------------------------
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    container_name: ha-mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+    networks:
+      - shared_ha_net
+
+  # ------------------------------------------------------------------
+  # Zigbee2MQTT — Zigbee device management gateway
+  # Network: shared_ha_net (accesses MQTT by container name "mosquitto")
+  # Web: http://<host-IP>:8080
+  # ------------------------------------------------------------------
+  zigbee2mqtt:
+    image: koenkk/zigbee2mqtt:latest
+    container_name: ha-z2m
+    restart: unless-stopped
+    depends_on:
+      - mosquitto
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./zigbee2mqtt/data:/app/data
+    devices:
+      - ${ZIGBEE_COORDINATOR_PORT:-/dev/ttyUSB0}:/dev/zigbee
+    environment:
+      - TZ=${TIMEZONE:-Asia/Shanghai}
+    networks:
+      - shared_ha_net
+
+  # ------------------------------------------------------------------
+  # Node-RED — Visual automation flow editor
+  # Network: shared_ha_net
+  # Web: http://<host-IP>:${NODERED_PORT:-1880}
+  # ------------------------------------------------------------------
+  nodered:
+    image: nodered/node-red:latest
+    container_name: ha-nodered
+    restart: unless-stopped
+    depends_on:
+      - mosquitto
+    ports:
+      - "${NODERED_PORT:-1880}:1880"
+    volumes:
+      - ./nodered/data:/data
+    environment:
+      - TZ=${TIMEZONE:-Asia/Shanghai}
+    networks:
+      - shared_ha_net
+
+  # ------------------------------------------------------------------
+  # ESPHome — ESP8266/ESP32 firmware compilation & flashing
+  # Network: host (requires mDNS broadcast & USB passthrough)
+  # Web: http://<host-IP>:6052
+  # ------------------------------------------------------------------
+  esphome:
+    image: ghcr.io/esphome/esphome:latest
+    container_name: ha-esphome
+    network_mode: host
+    restart: unless-stopped
+    privileged: true
+    volumes:
+      - ./esphome-configs:/config
+    environment:
+      - TZ=${TIMEZONE:-Asia/Shanghai}
+    # devices:  # Uncomment to passthrough USB flasher
+    #   - /dev/ttyUSB0:/dev/ttyUSB0
+    #   - /dev/ttyACM0:/dev/ttyACM0
+
+# ------------------------------------------------------------------
+# Custom bridge network
+# ------------------------------------------------------------------
+networks:
+  shared_ha_net:
+    name: shared_ha_net
+    driver: bridge
