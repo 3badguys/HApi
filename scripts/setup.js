@@ -78,11 +78,11 @@ function main() {
   // Step 4: Create .env for sub-projects
   console.log('\n📝 Creating sub-project .env files...');
   const haEnv = path.join(ROOT, 'homeassistant', '.env');
-  fs.writeFileSync(haEnv, rootEnv, 'utf8');
+  fs.copyFileSync(rootEnv, haEnv);
   console.log(`  ✓ homeassistant/.env`);
 
   const voiceEnv = path.join(ROOT, 'voice', '.env');
-  fs.writeFileSync(voiceEnv, rootEnv, 'utf8');
+  fs.copyFileSync(rootEnv, voiceEnv);
   console.log(`  ✓ voice/.env`);
 
   // Step 5: Generate config files from templates (delegated to generate-config)
