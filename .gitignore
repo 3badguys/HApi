@@ -15,6 +15,7 @@ homeassistant/mosquitto/log/*
 !homeassistant/mosquitto/log/.gitkeep
 homeassistant/zigbee2mqtt/data/*
 !homeassistant/zigbee2mqtt/data/.gitkeep
+!homeassistant/zigbee2mqtt/data/configuration.yaml.template
 homeassistant/nodered/data/*
 !homeassistant/nodered/data/.gitkeep
 homeassistant/esphome-configs/*
@@ -22,7 +23,6 @@ homeassistant/esphome-configs/*
 
 # Generated config files (produced by generate-config.js from .template)
 homeassistant/mosquitto/config/mosquitto.conf
-homeassistant/zigbee2mqtt/data/configuration.yaml
 
 # ESPHome build artifacts
 homeassistant/esphome-configs/.esphome/
