@@ -31,15 +31,34 @@ HApi/
 │   └── nodered/
 │       └── data/                         # Node-RED 流程数据（不跟踪）
 │
-└── voice/                                # ★ 项目2: 离线语音处理栈
-    ├── docker-compose.yml
-    ├── .env                              # 从根 .env 复制（不跟踪）
-    ├── openwakeword/
-    │   └── custom/                       # 自定义唤醒词模型 (.tflite)
-    ├── vosk/
-    │   └── data/                         # Vosk STT 数据（模型自动下载）
-    └── piper/
-        └── models/                       # Piper TTS 模型 (.onnx + .json)
+├── voice/                                # ★ 项目2: 离线语音处理栈
+|   ├── docker-compose.yml
+|   ├── .env                              # 从根 .env 复制（不跟踪）
+|   ├── openwakeword/
+|   │   └── custom/                       # 自定义唤醒词模型 (.tflite)
+|   ├── vosk/
+|   │   └── data/                         # Vosk STT 数据（模型自动下载）
+|   └── piper/
+|       └── models/                       # Piper TTS 模型 (.onnx + .json)
+│
+├── satellite/                            # ★ 项目3: 原生安装 Wyoming Satellite
+│   ├── config/
+│   │   └── satellite.conf.template       # 卫星配置模板
+│   ├── scripts/
+│   │   ├── install.sh                    # 一键安装脚本
+│   │   └── start.sh                      # 调试启动脚本
+│   └── systemd/
+│       └── wyoming-satellite.service     # systemd 服务
+│
+└── camera/                               # ★ 项目4: 原生安装 Motion 摄像头
+    ├── config/
+    │   └── motion.conf.template          # Motion 配置模板
+    ├── scripts/
+    │   ├── install.sh                    # 一键安装脚本
+    │   └── start.sh                      # 调试启动脚本
+    ├── systemd/
+    │   └── motion.service                # systemd 服务
+    └── recordings/                       # 录像存储目录
 ```
 
 ## 🚀 快速开始
@@ -76,6 +95,15 @@ cp .env.template .env
 | `ZIGBEE_COORDINATOR_BAUDRATE` | 协调器波特率 | `115200` |
 | `VOSK_LANGUAGE` | Vosk 语音语言代码（首次运行自动下载模型） | `zh` |
 | `PIPER_VOICE` | Piper 合成语音名 | `zh_CN-huayan-medium` |
+| `SATELLITE_NAME` | Wyoming Satellite 名称 | `Living Room Satellite` |
+| `SATELLITE_PORT` | Satellite Wyoming 监听端口 | `10700` |
+| `SATELLITE_MIC_DEVICE` | 麦克风 ALSA 设备 | `plughw:1,0` |
+| `SATELLITE_SPEAKER_DEVICE` | 扬声器 ALSA 设备 | `plughw:1,0` |
+| `MOTION_CAMERA_DEVICE` | 摄像头设备路径 | `/dev/video0` |
+| `MOTION_CAMERA_WIDTH` / `MOTION_CAMERA_HEIGHT` | 视频分辨率 | `640` × `480` |
+| `MOTION_FRAMERATE` | 视频帧率 | `15` |
+| `MOTION_WEBCONTROL_PORT` | Motion Web 控制端口 | `8081` |
+| `MOTION_STREAM_PORT` | Motion 实时流端口 | `8082` |
 
 ### 3. 运行初始化脚本
 
@@ -215,6 +243,79 @@ HA 重启后，进入 **设置 → 设备与服务 → 添加集成**，搜索 `
      - 唤醒词引擎: 选择 Wyoming openWakeWord
    - HA 内置的 HassIL 引擎会自动处理意图匹配
 
+### Wyoming Satellite（原生安装）
+
+Wyoming Satellite 将本地麦克风/扬声器桥接到 HA 的 Wyoming 语音服务，适合在远离 HA 主机的房间部署。
+
+**安装：**
+```bash
+npm run sat:install
+```
+
+此脚本将：
+1. 安装系统依赖（`python3`、`alsa-utils`、`portaudio`）
+2. 通过 `pip` 安装 `wyoming-satellite`
+3. 检测音频设备并输出可用列表
+4. 部署 `systemd` 服务并开机自启
+
+**配置：**
+编辑 `.env` 中的 Satellite 相关变量：
+- `SATELLITE_MIC_DEVICE` / `SATELLITE_SPEAKER_DEVICE`：运行 `arecord -L` / `aplay -L` 查看可用设备
+- `SATELLITE_NAME`：显示在 HA 中的名称
+- `WAKE_URI` / `STT_URI` / `TTS_URI`：指向语音栈的 Wyoming 服务地址
+
+**HA 集成：**
+进入 **设置 → 设备与服务 → 添加集成 → Wyoming Protocol**，填入 Satellite 所在主机的 IP 和端口（默认 `10700`）。
+
+**手动调试：**
+```bash
+npm run sat:start     # 前台运行，Ctrl+C 停止
+npm run sat:status    # 查看 systemd 状态
+npm run sat:logs      # 查看日志
+```
+
+### Motion 摄像头（原生安装）
+
+Motion 是 Linux 下的摄像头运动检测守护进程，通过 MQTT 将事件发布到 HA。
+
+**安装：**
+```bash
+npm run cam:install
+```
+
+此脚本将：
+1. 通过 `apt` 安装 `motion` 和 `v4l-utils`
+2. 检测摄像头设备
+3. 将配置部署到 `/etc/motion/motion.conf`
+4. 创建录像存储目录
+5. 部署 `systemd` 服务并开机自启
+
+**配置：**
+编辑 `.env` 中的 Motion 相关变量：
+- `MOTION_CAMERA_DEVICE`：运行 `v4l2-ctl --list-devices` 查看摄像头
+- `MOTION_CAMERA_WIDTH` / `MOTION_CAMERA_HEIGHT`：分辨率
+- `MOTION_MQTT_HOST`：MQTT 服务器地址（通常为 `localhost`）
+
+**HA 集成（4 种方式）：**
+
+| 方式 | 说明 |
+|------|------|
+| **A. MQTT 自动发现** | Motion 通过 MQTT 发布事件，部分 HA 版本会自动发现 |
+| **B. 手动 MQTT binary_sensor** | 在 `configuration.yaml` 中手动添加 `mqtt.binary_sensor`（安装脚本会打印示例） |
+| **C. motionEye 插件** | HA 插件商店安装 motionEye，功能更丰富的 Web 管理界面 |
+| **D. Generic Camera** | HA 中添加 Generic Camera 集成，填入 Motion 的流地址 |
+
+**Web 界面：**
+- 控制面板：`http://<host-IP>:8081`
+- 实时流：`http://<host-IP>:8082`
+
+**手动调试：**
+```bash
+npm run cam:start     # 前台运行，Ctrl+C 停止
+npm run cam:status    # 查看 systemd 状态
+npm run cam:logs      # 查看日志
+```
+
 ## 📜 npm 脚本速查
 
 ```bash
@@ -237,8 +338,20 @@ npm run voice:down    # 停止语音栈
 npm run voice:logs    # 查看语音栈日志
 npm run voice:restart # 重启语音栈
 
-npm run all:up        # 启动全部
-npm run all:down      # 停止全部
+npm run sat:install   # 安装 Wyoming Satellite（原生）
+npm run sat:start     # 启动 Satellite（调试）
+npm run sat:status    # 查看 Satellite 状态
+npm run sat:logs      # 查看 Satellite 日志
+npm run sat:restart   # 重启 Satellite
+
+npm run cam:install   # 安装 Motion 摄像头（原生）
+npm run cam:start     # 启动 Motion（调试）
+npm run cam:status    # 查看 Motion 状态
+npm run cam:logs      # 查看 Motion 日志
+npm run cam:restart   # 重启 Motion
+
+npm run all:up        # 启动全部 Docker 服务
+npm run all:down      # 停止全部 Docker 服务
 ```
 
 或直接使用 `docker compose` 命令：
@@ -289,5 +402,7 @@ docker compose -f voice/docker-compose.yml up -d
 - [openWakeWord](https://github.com/dscripka/openWakeWord) — 离线唤醒词检测
 - [Vosk](https://alphacephei.com/vosk/) — 离线语音识别
 - [Piper](https://github.com/rhasspy/piper) — 离线语音合成
+- [Wyoming Satellite](https://github.com/rhasspy/wyoming-satellite) — 远程语音采集/播放卫星
+- [Motion](https://motion-project.github.io/) — 摄像头运动检测守护进程
 - [Wyoming Protocol](https://github.com/rhasspy/wyoming) — 语音服务通信协议
-- [HassIL](https://github.com/home-assistant/hassil) — Home Assistant 内置意图匹配引擎
+- [HassIL](https://github.com/hassil) — Home Assistant 内置意图匹配引擎

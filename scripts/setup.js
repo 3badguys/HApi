@@ -72,6 +72,9 @@ function main() {
     'voice/openwakeword/custom',
     'voice/vosk/data',
     'voice/piper/models',
+    'satellite/config',
+    'camera/config',
+    'camera/recordings',
   ];
   for (const d of dirs) ensureDir(path.join(ROOT, d));
 
@@ -87,7 +90,7 @@ function main() {
 
   // Step 5: Generate config files from templates (delegated to generate-config)
   console.log('\n⚙️  Generating config files...');
-  const projDirs = ['homeassistant', 'voice'];
+  const projDirs = ['homeassistant', 'voice', 'satellite', 'camera'];
   for (const d of projDirs) {
     const base = path.join(ROOT, d);
     const templates = findTemplates(base);

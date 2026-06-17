@@ -1,0 +1,32 @@
+[Unit]
+Description=Motion — Camera Motion Detection Daemon
+Documentation=https://motion-project.github.io/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=forking
+User=motion
+Group=motion
+
+# Use project config (symlinked from /etc/motion/motion.conf by install.sh)
+ExecStart=/usr/bin/motion -c {{PROJ_DIR}}/camera/config/motion.conf
+ExecStop=/usr/bin/killall -TERM motion
+ExecReload=/usr/bin/killall -HUP motion
+
+PIDFile=/run/motion/motion.pid
+RuntimeDirectory=motion
+
+Restart=on-failure
+RestartSec=15
+
+# Video device access
+SupplementaryGroups=video
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=motion
+
+[Install]
+WantedBy=multi-user.target

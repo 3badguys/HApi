@@ -35,6 +35,14 @@ voice/vosk/data/*
 voice/piper/models/*
 !voice/piper/models/.gitkeep
 
+# Satellite — generated config
+satellite/config/satellite.conf
+
+# Camera — generated config & recordings
+camera/config/motion.conf
+camera/recordings/*
+!camera/recordings/.gitkeep
+
 # System files
 .DS_Store
 Thumbs.db

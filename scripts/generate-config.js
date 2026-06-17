@@ -99,11 +99,13 @@ function main() {
 
   const target = process.argv[2] || 'all';
   const dirs = [];
-  if (target === 'ha' || target === 'all') dirs.push('homeassistant');
+  if (target === 'ha' || target === 'all')  dirs.push('homeassistant');
   if (target === 'voice' || target === 'all') dirs.push('voice');
+  if (target === 'sat' || target === 'all') dirs.push('satellite');
+  if (target === 'cam' || target === 'all') dirs.push('camera');
 
   if (dirs.length === 0) {
-    console.log('Usage: node scripts/generate-config.js [ha|voice|all]');
+    console.log('Usage: node scripts/generate-config.js [ha|voice|sat|cam|all]');
     process.exit(0);
   }
 

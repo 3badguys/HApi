@@ -1,0 +1,44 @@
+[Unit]
+Description=Wyoming Satellite — Voice Assistant Satellite
+Documentation=https://github.com/rhasspy/wyoming-satellite
+After=network-online.target sound.target
+Wants=network-online.target sound.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory={{PROJ_DIR}}
+
+# Load configuration
+EnvironmentFile={{PROJ_DIR}}/satellite/config/satellite.conf
+
+# Run the satellite (reads config from EnvironmentFile)
+ExecStart=/usr/bin/env bash -c ' \
+  exec wyoming-satellite \
+    --name "${SATELLITE_NAME}" \
+    --uri "${SATELLITE_URI}" \
+    --mic-command "${MIC_COMMAND}" \
+    --snd-command "${SND_COMMAND}" \
+    --wake-uri "${WAKE_URI}" \
+    --stt-uri "${STT_URI}" \
+    --tts-uri "${TTS_URI}" \
+    ${WAKE_WORD_NAME:+--wake-word-name "${WAKE_WORD_NAME}"} \
+    --volume-multiplier "${VOLUME_MULTIPLIER:-1.0}" \
+    $([[ "${NOISE_SUPPRESSION:-1}" == "1" ]] && echo "--noise-suppression" || echo "") \
+    $([[ "${AUTO_GAIN:-1}" == "1" ]] && echo "--auto-gain" || echo "") \
+    $([[ "${DEBUG:-0}" == "1" ]] && echo "--debug" || echo "") \
+  '
+
+Restart=always
+RestartSec=10
+
+# Audio device access
+SupplementaryGroups=audio
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=wyoming-satellite
+
+[Install]
+WantedBy=multi-user.target
