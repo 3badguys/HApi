@@ -30,8 +30,8 @@ homeassistant/esphome-configs/.esphome/
 # Model files (large) — keep .gitkeep
 voice/openwakeword/custom/*
 !voice/openwakeword/custom/.gitkeep
-voice/vosk/models/*
-!voice/vosk/models/.gitkeep
+voice/vosk/data/*
+!voice/vosk/data/.gitkeep
 voice/piper/models/*
 !voice/piper/models/.gitkeep
 

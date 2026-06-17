@@ -70,7 +70,7 @@ function main() {
     'homeassistant/zigbee2mqtt/data',
     'homeassistant/nodered/data',
     'voice/openwakeword/custom',
-    'voice/vosk/models',
+    'voice/vosk/data',
     'voice/piper/models',
   ];
   for (const d of dirs) ensureDir(path.join(ROOT, d));
@@ -98,9 +98,9 @@ function main() {
 
   // Step 6: Model download hints
   console.log('\n📦 Model download hints:');
-  console.log('  • Vosk model: download to voice/vosk/models/');
+  console.log('  • Vosk model: auto-downloaded on first run (language from .env)');
   console.log('    https://alphacephei.com/vosk/models');
-  console.log(`    Recommended: ${process.env.VOSK_MODEL || 'vosk-model-small-cn-0.22'}`);
+  console.log(`    Language: ${process.env.VOSK_LANGUAGE || 'zh'}`);
   console.log('  • Piper model: download .onnx + .json to voice/piper/models/');
   console.log('    https://huggingface.co/rhasspy/piper-voices');
   console.log(`    Recommended: ${process.env.PIPER_VOICE || 'zh_CN-huayan-medium'}`);

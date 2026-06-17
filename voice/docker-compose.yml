@@ -39,7 +39,9 @@ services:
   # ------------------------------------------------------------------
   # Vosk — Offline speech-to-text engine (STT)
   # Port: 10300
-  # Models: download, unzip, and place under ./vosk/models/<model-name>/
+  # Data: auto-downloaded to ./vosk/data/ on first run,
+  #       or place pre-downloaded models there manually.
+  #       https://alphacephei.com/vosk/models
   # ------------------------------------------------------------------
   vosk:
     image: rhasspy/wyoming-vosk:latest
@@ -48,12 +50,12 @@ services:
     ports:
       - "${VOSK_PORT:-10300}:10300"
     volumes:
-      - ./vosk/models:/models
+      - ./vosk/data:/data
     command:
-      - --model-dir
-      - /models
-      - --model-name
-      - "${VOSK_MODEL:-vosk-model-small-cn-0.22}"
+      - --data-dir
+      - /data
+      - --language
+      - "${VOSK_LANGUAGE:-zh}"
       - --uri
       - tcp://0.0.0.0:10300
     networks:

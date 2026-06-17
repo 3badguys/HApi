@@ -37,7 +37,7 @@ HApi/
     ├── openwakeword/
     │   └── custom/                       # 自定义唤醒词模型 (.tflite)
     ├── vosk/
-    │   └── models/                       # Vosk STT 模型
+    │   └── data/                         # Vosk STT 数据（模型自动下载）
     └── piper/
         └── models/                       # Piper TTS 模型 (.onnx + .json)
 ```
@@ -74,7 +74,7 @@ cp .env.template .env
 | `MQTT_PASSWORD` | MQTT 密码 | `change_me_to_a_strong_password` |
 | `ZIGBEE_COORDINATOR_PORT` | Zigbee 协调器串口 | `/dev/ttyUSB0`（Linux）；Windows 用 `COM3` 等 |
 | `ZIGBEE_COORDINATOR_BAUDRATE` | 协调器波特率 | `115200` |
-| `VOSK_MODEL` | Vosk 语音模型名 | `vosk-model-small-cn-0.22` |
+| `VOSK_LANGUAGE` | Vosk 语音语言代码（首次运行自动下载模型） | `zh` |
 | `PIPER_VOICE` | Piper 合成语音名 | `zh_CN-huayan-medium` |
 
 ### 3. 运行初始化脚本
@@ -91,18 +91,13 @@ npm run setup
 ### 4. 下载语音模型（按需）
 
 **Vosk（STT 语音识别）：**
-```bash
-# 下载中文小模型（约 42MB）
-# 模型列表: https://alphacephei.com/vosk/models
-cd voice/vosk/models/
-wget https://alphacephei.com/vosk/models/vosk-model-small-cn-0.22.zip
-unzip vosk-model-small-cn-0.22.zip
-rm vosk-model-small-cn-0.22.zip
-```
+首次启动时根据 `.env` 中的 `VOSK_LANGUAGE` 自动下载对应语言模型，无需手动操作。
+如需手动放置预下载模型，放入 `voice/vosk/data/` 目录即可。
+模型列表: https://alphacephei.com/vosk/models
 
 **Piper（TTS 语音合成）：**
 ```bash
-# 下载 zh_CN-huayan 语音
+# 下载 zh_CN-huayan-medium 语音（约 50MB）
 # 模型列表: https://huggingface.co/rhasspy/piper-voices
 cd voice/piper/models/
 wget https://huggingface.co/rhasspy/piper-voices/resolve/main/zh/zh_CN/huayan/medium/zh_CN-huayan-medium.onnx
@@ -111,8 +106,7 @@ wget https://huggingface.co/rhasspy/piper-voices/resolve/main/zh/zh_CN/huayan/me
 
 **自定义唤醒词（可选）：**
 ```bash
-# 将训练好的 .tflite 唤醒词模型放入
-# voice/openwakeword/custom/
+# 将训练好的 .tflite 唤醒词模型放入 voice/openwakeword/custom/
 ```
 
 ### 5. 启动服务
@@ -154,7 +148,28 @@ npm run all:up
 
 ### HACS 安装
 
-HA 启动后，进入 **设置 → 设备与服务 → 添加集成**，搜索 `HACS` 进行安装。详见 [HACS 官方文档](https://hacs.xyz/)。
+你需要进入 Home Assistant 容器，然后执行一个安装脚本。
+
+#### 1. 进入容器
+执行以下命令：
+```bash
+docker exec -it ha-core sh
+```
+
+#### 2. 执行安装命令
+进入容器后，运行以下命令：
+```bash
+wget -O - https://get.hacs.xyz | bash -
+```
+
+#### 3. 退出并重启容器
+宿主机上重启 Home Assistant 容器：
+```bash
+docker restart ha-core
+```
+
+#### 4. 安装完成后
+HA 重启后，进入 **设置 → 设备与服务 → 添加集成**，搜索 `HACS` 进行安装，按照提示完成与 GitHub 账号的授权即可。
 
 ### MQTT 集成
 
