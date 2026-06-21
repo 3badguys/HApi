@@ -22,6 +22,8 @@ services:
     image: rhasspy/wyoming-openwakeword:latest
     container_name: voice-openwakeword
     restart: unless-stopped
+    environment:
+      - TZ=${TIMEZONE:-Asia/Shanghai}
     ports:
       - "${OPENWAKEWORD_PORT:-10400}:10400"
     volumes:
@@ -47,6 +49,8 @@ services:
     image: rhasspy/wyoming-vosk:latest
     container_name: voice-vosk
     restart: unless-stopped
+    environment:
+      - TZ=${TIMEZONE:-Asia/Shanghai}
     ports:
       - "${VOSK_PORT:-10300}:10300"
     volumes:
@@ -70,6 +74,8 @@ services:
     image: rhasspy/wyoming-piper:latest
     container_name: voice-piper
     restart: unless-stopped
+    environment:
+      - TZ=${TIMEZONE:-Asia/Shanghai}
     ports:
       - "${PIPER_PORT:-10200}:10200"
     volumes:

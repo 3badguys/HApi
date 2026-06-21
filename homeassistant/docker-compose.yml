@@ -42,6 +42,8 @@ services:
     ports:
       - "1883:1883"
       - "9001:9001"
+    environment:
+      - TZ=${TIMEZONE:-Asia/Shanghai}
     volumes:
       - ./mosquitto/config:/mosquitto/config
       - ./mosquitto/data:/mosquitto/data
