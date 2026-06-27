@@ -67,7 +67,7 @@ services:
     volumes:
       - ./zigbee2mqtt/data:/app/data
     devices:
-      - ${ZIGBEE_COORDINATOR_PORT:-/dev/ttyUSB0}:/dev/zigbee
+      - ${ZIGBEE_COORDINATOR_PORT:-/dev/ttyACM0}:/dev/zigbee
     environment:
       - TZ=${TIMEZONE:-Asia/Shanghai}
     networks:

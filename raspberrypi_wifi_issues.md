@@ -37,6 +37,13 @@ sudo iwlist wlan0 scan   # 验证能否扫到 WiFi（应有列表输出）
 
 ```bash
 sudo systemctl start wpa_supplicant dhcpcd
+
+# 查看 wpa_supplicant 当前连接信息
+# 输出内容包括：SSID（已连接的网络名）、BSSID（AP 的 MAC 地址）、
+#              IP 地址（通过 DHCP 获取的）、认证状态（COMPLETED 表示成功）等。
+# 常见状态字段：wpa_state=COMPLETED（成功关联），ip_address=192.168.x.x（获取到 IP）
+sudo wpa_cli -i wlan0 status
+
 ip a show wlan0          # 确认是否获取到 IP（192.168.x.x / 10.x.x.x）
 ```
 

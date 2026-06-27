@@ -91,7 +91,7 @@ cp .env.template .env
 | `TIMEZONE` | 时区 | `Asia/Shanghai` |
 | `MQTT_USERNAME` | MQTT 用户名 | `mqtt_user` |
 | `MQTT_PASSWORD` | MQTT 密码 | `change_me_to_a_strong_password` |
-| `ZIGBEE_COORDINATOR_PORT` | Zigbee 协调器串口 | `/dev/ttyUSB0`（Linux）；Windows 用 `COM3` 等 |
+| `ZIGBEE_COORDINATOR_PORT` | Zigbee 协调器串口 | `/dev/ttyUSB0` 或者 `/dev/ttyACM0`（Linux）；Windows 用 `COM3` 等 |
 | `ZIGBEE_COORDINATOR_BAUDRATE` | 协调器波特率 | `115200` |
 | `VOSK_LANGUAGE` | Vosk 语音语言代码（首次运行自动下载模型） | `zh` |
 | `PIPER_VOICE` | Piper 合成语音名 | `zh_CN-huayan-medium` |
@@ -366,7 +366,7 @@ docker compose -f voice/docker-compose.yml up -d
 1. **Host 网络模式：** Home Assistant 和 ESPHome 使用 `host` 网络，在 Windows/macOS 上 Docker Desktop 的 host 网络支持有限，建议在生产环境使用 Linux 宿主机。Windows 用户可能需要将部分 host 网络改为 bridge + 端口映射。
 
 2. **Zigbee 协调器：**
-   - Linux: `/dev/ttyUSB0` 或 `/dev/serial/by-id/...`（推荐后者，持久化编号）
+   - Linux: `/dev/ttyUSB0` 或 `/dev/ttyACM0` 或 `/dev/serial/by-id/...`（推荐后者，持久化编号）
    - Windows: `COM3`（且在 `docker-compose.yml` 中需使用 `devices:` 映射）
    - macOS: `/dev/cu.usbserial-xxx`
 
