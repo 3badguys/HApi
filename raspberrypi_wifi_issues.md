@@ -49,9 +49,65 @@ ip a show wlan0          # 确认是否获取到 IP（192.168.x.x / 10.x.x.x）
 
 ---
 
-### 🛠️ 第三步：永久修复（防止重启后复发）
+### 🔧 第三步：高级调试（获取详细日志，定位根本原因）
 
-#### 3.1 关闭电源管理（永久）
+当上述步骤无法连接，或连接后反复断开时，**使用调试模式捕获完整日志**，这是最有效的手段。
+
+#### 3.1 停止系统服务，清理冲突文件
+```bash
+sudo systemctl stop wpa_supplicant
+sudo rm -f /var/run/wpa_supplicant/wlan0   # 清除残留的控制接口文件
+```
+
+#### 3.2 启动调试模式，同时输出到终端和文件
+```bash
+sudo wpa_supplicant -i wlan0 -c /etc/wpa_supplicant/wpa_supplicant.conf -dd 2>&1 | tee wpa_debug.log
+```
+
+- 这会**实时显示**调试信息在屏幕上，同时**保存**到 `wpa_debug.log` 文件中。
+- 观察日志中的关键词：
+  - `CTRL-EVENT-CONNECTED` → 连接成功
+  - `ASSOC-REJECT status_code=16` → 认证失败（检查密码/加密方式）
+  - `4-Way Handshake failed` → 加密协商失败（检查 `proto`/`pairwise` 设置）
+  - `Address already in use` → 服务冲突（按 3.1 清理即可）
+
+#### 3.3 分析并调整配置
+根据日志中的错误，调整 `/etc/wpa_supplicant/wpa_supplicant.conf`。
+
+**基础配置模板（针对现代路由器和手机热点优化）**：
+```bash
+network={
+    ssid="你的WiFi名称"
+    psk="你的密码"
+    proto=RSN          # 仅 WPA2
+    key_mgmt=WPA-PSK
+    pairwise=CCMP      # 仅 AES
+    group=CCMP
+    # freq_list=...    # 如需强制 2.4G，取消注释并填写频率列表
+}
+```
+
+**针对手机热点的特别优化（重要）**：
+- **问题现象**：连接手机热点时反复失败，日志显示 `status_code=16`。
+- **根本原因**：手机热点对加密协商非常严格，如果树莓派同时抛出多个协议或加密选项（如 `proto=RSN WPA` 或 `pairwise=TKIP CCMP`），热点可能会因为“不专一”或“包含不安全选项”而直接拒绝。
+- **解决方案**：**严格精简加密参数**，只保留最标准的 WPA2-AES，即：
+  - `proto=RSN`（去掉 `WPA`）
+  - `pairwise=CCMP`（去掉 `TKIP`）
+  - `group=CCMP`（去掉 `TKIP`）
+- 如果你使用的是老旧路由器，且上述配置无法连接，可以尝试将 `proto=RSN` 改为 `proto=WPA`（即降级为 WPA1），但**不推荐**，仅作为最后手段。
+
+#### 3.4 调试完成后，恢复服务
+```bash
+sudo systemctl start wpa_supplicant
+sudo systemctl start dhcpcd
+```
+（调试模式不会影响系统服务，但建议重启确保一切恢复正常）
+
+---
+
+### 🛠️ 第四步：永久修复（防止重启后复发）
+
+#### 4.1 关闭电源管理（永久）
 ```bash
 sudo nano /etc/rc.local
 ```
@@ -60,7 +116,7 @@ sudo nano /etc/rc.local
 iwconfig wlan0 power off
 ```
 
-#### 3.2 在启动时自动重置网卡（解决开机卡死）
+#### 4.2 在启动时自动重置网卡（解决开机卡死）
 同样在 `/etc/rc.local` 的 `exit 0` 前面加入：
 ```bash
 ip link set wlan0 down
@@ -71,7 +127,7 @@ systemctl restart wpa_supplicant
 systemctl restart dhcpcd
 ```
 
-#### 3.3 内核级禁用省电功能（降低运行时卡死概率）
+#### 4.3 内核级禁用省电功能（降低运行时卡死概率）
 编辑 `/boot/cmdline.txt`：
 ```bash
 sudo nano /boot/cmdline.txt
@@ -90,7 +146,7 @@ sudo nano /boot/config.txt
 dtoverlay=brcmfmac,ignore_warnings=1
 ```
 
-#### 3.4 生效
+#### 4.4 生效
 ```bash
 sudo chmod +x /etc/rc.local
 ```
@@ -98,7 +154,7 @@ sudo chmod +x /etc/rc.local
 
 ---
 
-### 🔄 应急命令（运行时突然断连，无需重启）
+### 🔄 第五步：应急命令（运行时突然断连，无需重启）
 
 ```bash
 sudo modprobe -r brcmfmac && sudo modprobe brcmfmac && sudo systemctl restart dhcpcd
@@ -106,7 +162,7 @@ sudo modprobe -r brcmfmac && sudo modprobe brcmfmac && sudo systemctl restart dh
 
 ---
 
-### ✅ 验证修复是否生效
+### ✅ 第六步：验证修复是否生效
 ```bash
 ip a show wlan0          # 应显示 UP 且有正常 IP
 iwconfig wlan0 | grep "Power Management"   # 应为 off
