@@ -39,15 +39,19 @@ services:
     image: eclipse-mosquitto:latest
     container_name: ha-mosquitto
     restart: unless-stopped
+    entrypoint: /mosquitto-entrypoint.sh
     ports:
       - "1883:1883"
       - "9001:9001"
     environment:
       - TZ=${TIMEZONE:-Asia/Shanghai}
+      - MQTT_USERNAME=${MQTT_USERNAME}
+      - MQTT_PASSWORD=${MQTT_PASSWORD}
     volumes:
       - ./mosquitto/config:/mosquitto/config
       - ./mosquitto/data:/mosquitto/data
       - ./mosquitto/log:/mosquitto/log
+      - ./mosquitto/mosquitto-entrypoint.sh:/mosquitto-entrypoint.sh:ro
     networks:
       - shared_ha_net
 

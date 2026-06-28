@@ -14,9 +14,9 @@ homeassistant:
 mqtt:
   base_topic: zigbee2mqtt
   server: mqtt://mosquitto:1883
-  # If MQTT authentication is enabled, uncomment the two lines below:
-  # user: "{{MQTT_USERNAME}}"
-  # password: "{{MQTT_PASSWORD}}"
+  # Credentials (auto-filled via generate-config.js from .env)
+  user: "{{MQTT_USERNAME}}"
+  password: "{{MQTT_PASSWORD}}"
 
 # Zigbee coordinator serial port (host device mapped to /dev/zigbee in compose)
 serial:

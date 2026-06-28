@@ -88,6 +88,21 @@ function renderTemplate(templatePath) {
   if (!fs.existsSync(outDir)) {
     fs.mkdirSync(outDir, { recursive: true });
   }
+
+  // Remove existing file first (may be owned by Docker/root)
+  if (fs.existsSync(outPath)) {
+    try {
+      fs.unlinkSync(outPath);
+    } catch (e) {
+      if (e.code === 'EACCES') {
+        console.error(`  ✗ ${path.relative(ROOT, outPath)} — permission denied (file owned by root?)`);
+        console.error(`    Run: sudo rm ${outPath} && node scripts/setup.js`);
+        return;
+      }
+      throw e;
+    }
+  }
+
   fs.writeFileSync(outPath, content, 'utf8');
   console.log(`  ✓ ${path.relative(ROOT, outPath)}`);
 }
