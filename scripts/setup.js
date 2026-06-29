@@ -14,6 +14,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { loadEnv, findTemplates, renderTemplate } = require('./generate-config');
 
 const ROOT = path.resolve(__dirname, '..');
@@ -58,6 +59,51 @@ function main() {
 
   // Step 2: Load env vars (via generate-config's shared loader)
   loadEnv();
+
+  // Step 2.5: Persist Zigbee network keys — generate random values for GENERATE placeholders
+  console.log('\n🔑 Checking Zigbee network keys...');
+  const zigbeeKeys = {
+    ZIGBEE_NETWORK_KEY: () => {
+      const bytes = crypto.randomBytes(16);
+      return '[' + Array.from(bytes).join(', ') + ']';
+    },
+    ZIGBEE_PAN_ID: () => String(Math.floor(Math.random() * 65534) + 1),
+    ZIGBEE_EXT_PAN_ID: () => {
+      const bytes = crypto.randomBytes(8);
+      return '[' + Array.from(bytes).join(', ') + ']';
+    },
+  };
+  // Old hex-format values also need regeneration (Z2M 2.x requires array format)
+  const isHexFormat = (key, val) =>
+    (key === 'ZIGBEE_NETWORK_KEY' && /^[0-9a-fA-F]{32}$/.test(val)) ||
+    (key === 'ZIGBEE_EXT_PAN_ID' && /^[0-9a-fA-F]{16}$/.test(val));
+  let envUpdated = false;
+  const envFile = path.join(ROOT, '.env');
+  let envContent = fs.readFileSync(envFile, 'utf8');
+
+  for (const [key, generate] of Object.entries(zigbeeKeys)) {
+    const currentVal = process.env[key];
+    if (!currentVal || currentVal === 'GENERATE' || isHexFormat(key, currentVal)) {
+      const val = generate();
+      process.env[key] = val;
+      const re = new RegExp(`^${key}=.*`, 'm');
+      if (re.test(envContent)) {
+        envContent = envContent.replace(re, `${key}=${val}`);
+      } else {
+        envContent += `\n${key}=${val}`;
+      }
+      const reason = isHexFormat(key, currentVal) ? ' (hex → array)' : '';
+      console.log(`  ✓ ${key}=${val}${reason}`);
+      envUpdated = true;
+    } else {
+      console.log(`  ℹ️  ${key} already set — keeping existing value`);
+    }
+  }
+
+  if (envUpdated) {
+    fs.writeFileSync(envFile, envContent, 'utf8');
+    console.log('  📝 .env updated with generated keys');
+  }
 
   // Step 3: Create sub-directories
   console.log('📁 Checking directory structure...');

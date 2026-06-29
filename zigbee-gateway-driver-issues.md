@@ -186,7 +186,55 @@ sudo apt install python3-serial python3-intelhex -y
 sudo python3 cc2538_bsl.py -ewv -p /dev/ttyCH343USB0 --bootloader-sonoff-usb ./CC1352P2_CC2652P_other_coordinator_20250321.hex
 ```
 
-刷写完成后，拔掉网关，直接插回（不需按 Boot），再次测试 `AT` 命令，应返回 `OK`。
+### 6.6 为什么修改 `network_key`、`pan_id` 或 `ext_pan_id` 后必须重刷（或擦除 NVRAM）？
+
+Zigbee 协调器（CC2652P 芯片）的 **Flash 存储器** 中分为两个主要区域：
+
+- **固件区**：存放 Zigbee 协议栈和协调器程序（即你刷写的 `.hex` 或 `.bin` 文件）。
+- **NVRAM（非易失性随机存取存储器）**：存放当前网络的运行参数，包括：
+  - `network_key`（网络密钥）
+  - `pan_id` 和 `extended_pan_id`（扩展 PAN ID）
+  - 已配对设备列表、绑定表、路由表等
+
+#### 三个参数各自的作用
+
+| 参数 | 位数 | 作用 |
+|------|------|------|
+| **`network_key`** | 128 位（16 字节） | Zigbee 网络加密密钥，所有通信数据都通过它加密，防止未授权设备监听。 |
+| **`pan_id`** | 16 位（如 `0x60C3`） | 局域网络标识符，用于在同一空间内区分不同 Zigbee 网络。多个网络可以使用相同的 `pan_id`（只要它们相距足够远）。 |
+| **`ext_pan_id`** | 64 位（IEEE 扩展地址） | 全球唯一网络标识符，在网络冲突或扫描时精确识别你的专属网络。即使两个网络的 `pan_id` 相同，`ext_pan_id` 也能将它们区分开。 |
+
+**`network_key`、`pan_id`、`ext_pan_id` 三者共同构成了 Zigbee 网络的完整“身份证”**，它们全部存储在硬件的 NVRAM 中。
+
+#### 为什么修改其中任何一个都必须重刷？
+
+当你仅修改 Zigbee2MQTT 配置文件（或环境变量）中的这些参数时，**实际上只改变了软件端告诉硬件“应该用什么参数建网”的期望值**。但硬件通电启动时，会**优先读取 Flash 中 NVRAM 里已存储的旧参数**。如果 NVRAM 中已经存在一份完整的网络身份（包括旧的 key、pan_id 和 ext_pan_id），固件就会认为“我已经属于一个旧的 Zigbee 网络”，从而**拒绝使用你提供的新参数进行 commissioning**，最终导致启动超时，报错：
+
+```
+network commissioning timed out - most likely network with the same panId or extendedPanId already exists nearby
+```
+
+**关键点**：即使你只修改了其中一个参数（比如只改了 `ext_pan_id`），只要 NVRAM 里还存着旧值，固件就会检测到网络身份不一致，拒绝启动。因此，**任何一项网络身份参数的修改，都必须清空 NVRAM 或重刷固件才能生效**。
+
+#### 解决这个问题的两种途径：
+
+| 方法 | 操作 | 优点 | 缺点 / 风险 |
+|------|------|------|------------|
+| **① 仅擦除 NVRAM 页** | 使用 `cc2538-bsl -E <页号>` 只清除 NVRAM 区域，保留固件。 | 固件不变，操作时间短。 | 需要知道 NVRAM 的确切起始页号（不同固件版本可能不同），指定错误页号可能导致固件损坏或擦除无效。工具使用较复杂，不适合新手。 |
+| **② 全片擦除 + 重刷固件**（本文采用） | 使用 `cc2538-bsl -e -w 固件.bin` 将整个 Flash 擦除，然后写入全新固件。 | **最彻底、最可靠**。NVRAM 被完全清空，固件同时也更新到最新版本，避免旧版 bug。操作步骤标准化，社区广泛采用。 | 耗时稍长（约 1 分钟），需要重新下载固件文件。 |
+
+**因此，当你决定更换网络密钥、PAN ID 或扩展 PAN ID 时，最稳妥的做法就是直接全擦并刷入最新协调器固件。**
+这不仅清空了旧网络参数，还能让你享受固件更新带来的性能提升和稳定性修复。
+
+#### ⚠️ 重要提醒：刷完固件后必须删除 `coordinator_backup.json`
+
+Zigbee2MQTT 会在 `data` 目录下保存一个 `coordinator_backup.json` 文件，用于在协调器意外损坏时恢复网络。**如果该文件存在**，Z2M 启动时会将其中的旧网络参数（包括旧的 `network_key`、`pan_id` 和 `ext_pan_id`）重新写回硬件的 NVRAM，导致你刚刚清空的参数再次被覆盖，新网络仍然无法创建。
+
+所以，刷完固件并重新插拔协调器后，**务必执行**：
+```bash
+rm -f homeassistant/zigbee2mqtt/data/coordinator_backup.json
+```
+然后再启动 Z2M，这样硬件就会以“空白”状态接受你在配置文件里指定的新 `network_key`、`pan_id` 和 `ext_pan_id`，顺利建立新网络。
 
 ---
 
