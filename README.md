@@ -18,11 +18,13 @@ HApi/
 ├── homeassistant/                        # ★ 项目1: 核心HA服务栈
 │   ├── docker-compose.yml
 │   ├── .env                              # 从根 .env 复制（不跟踪）
-│   ├── config/                           # HA 配置文件（不跟踪）
+│   ├── config/
+│   │   └── configuration.yaml.template   # HA 配置模板
 │   ├── esphome-configs/                  # ESPHome 设备配置文件
 │   ├── mosquitto/
 │   │   ├── config/
 │   │   │   └── mosquitto.conf.template   # MQTT 配置模板
+│   │   ├── mosquitto-entrypoint.sh       # 容器启动脚本（自动生成密码文件）
 │   │   ├── data/                         # MQTT 持久化数据（不跟踪）
 │   │   └── log/                          # MQTT 日志（不跟踪）
 │   ├── zigbee2mqtt/
@@ -93,6 +95,11 @@ cp .env.template .env
 | `MQTT_PASSWORD` | MQTT 密码 | `change_me_to_a_strong_password` |
 | `ZIGBEE_COORDINATOR_PORT` | Zigbee 协调器串口 | `/dev/ttyUSB0` 或者 `/dev/ttyACM0`（Linux）；Windows 用 `COM3` 等 |
 | `ZIGBEE_COORDINATOR_BAUDRATE` | 协调器波特率 | `115200` |
+| `ZIGBEE_CHANNEL` | Zigbee 信道（15/20/25 避开 WiFi 1/6/11） | `15` |
+| `ZIGBEE_NETWORK_KEY` | Zigbee 网络密钥（`GENERATE` = 首次自动生成） | `GENERATE` |
+| `ZIGBEE_PAN_ID` | Zigbee PAN ID（`GENERATE` = 首次自动生成） | `GENERATE` |
+| `ZIGBEE_EXT_PAN_ID` | Zigbee Extended PAN ID（`GENERATE` = 首次自动生成） | `GENERATE` |
+| `TRUSTED_PROXIES` | HA 受信反向代理 CIDR（Docker bridge） | `172.16.0.0/12` |
 | `VOSK_LANGUAGE` | Vosk 语音语言代码（首次运行自动下载模型） | `zh` |
 | `PIPER_VOICE` | Piper 合成语音名 | `zh_CN-huayan-medium` |
 | `SATELLITE_NAME` | Wyoming Satellite 名称 | `Living Room Satellite` |
@@ -375,20 +382,13 @@ docker compose -f voice/docker-compose.yml up -d
    - `.env` 和生成的配置文件均已加入 `.gitignore`
    - **请勿将 `.env` 提交到 Git 仓库！**
 
-4. **Mosquitto 密码认证：** 默认允许匿名连接。如需启用密码保护：
-   ```bash
-   docker exec -it ha-mosquitto mosquitto_passwd -c /mosquitto/config/passwd <用户名>
-   ```
-   然后编辑 `mosquitto.conf.template` 取消 `password_file` 注释并将 `allow_anonymous` 改为 `false`，重新运行 `npm run generate-config ha` 并重启。
+4. **Mosquitto 密码认证：** 容器启动时自动根据 `.env` 中的 `MQTT_USERNAME` / `MQTT_PASSWORD` 生成密码文件，无需手动操作。Zigbee2MQTT 也自动使用相同凭证连接。
 
 5. **模型存储：** 语音模型文件体积较大（Vosk 中文模型约 42MB，大型模型可达 1GB+），请确保磁盘空间充足。模型文件不会提交到 Git。
 
 6. **端口冲突：** 启动前确认以下端口未被占用：`8123`（HA）、`1883/9001`（MQTT）、`8080`（Z2M）、`1880`（Node-RED）、`6052`（ESPHome）、`10200/10300/10400`（语音服务）。
 
-7. **文件权限：** 在 Linux 上，如果遇到 Mosquitto 日志写入错误，需要修复目录权限：
-   ```bash
-   sudo chown -R 1883:1883 homeassistant/mosquitto/log/
-   ```
+7. **文件权限：** Mosquitto 容器的 entrypoint 脚本会自动修复 `data/`、`log/` 和密码文件的权限，无需手动处理。
 
 8. **ESPHome 编译：** 首次使用 ESPHome 需要在宿主机安装驱动（CP210x/CH340），并将 USB 设备通过 `devices` 映射到容器。
 

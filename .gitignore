@@ -9,6 +9,7 @@ voice/.env
 # Home Assistant — ignore directory contents but keep .gitkeep
 homeassistant/config/*
 !homeassistant/config/.gitkeep
+!homeassistant/config/configuration.yaml.template
 homeassistant/mosquitto/data/*
 !homeassistant/mosquitto/data/.gitkeep
 homeassistant/mosquitto/log/*
