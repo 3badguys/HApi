@@ -107,50 +107,44 @@ sudo systemctl start dhcpcd
 
 ### 🛠️ 第四步：永久修复（防止重启后复发）
 
-#### 4.1 关闭电源管理（永久）
+#### 4.1 创建 systemd 服务，开机自动关闭电源管理
+
+**1. 拷贝 `service服务文件` 到 `systemd` 目录**：
+
 ```bash
-sudo nano /etc/rc.local
-```
-在 `exit 0` 前面加入：
-```bash
-iwconfig wlan0 power off
+sudo cp ./disable-wifi-powersave.service /etc/systemd/system/
 ```
 
-#### 4.2 在启动时自动重置网卡（解决开机卡死）
-同样在 `/etc/rc.local` 的 `exit 0` 前面加入：
+**2. 启用服务并立即生效**：
+
 ```bash
-ip link set wlan0 down
-ip link set wlan0 up
-iwconfig wlan0 txpower on
-sleep 2
-systemctl restart wpa_supplicant
-systemctl restart dhcpcd
+sudo systemctl daemon-reload
+sudo systemctl enable --now disable-wifi-powersave.service
 ```
 
-#### 4.3 内核级禁用省电功能（降低运行时卡死概率）
-编辑 `/boot/cmdline.txt`：
+---
+
+#### 4.2 内核级驱动参数优化（永久生效）
+
+创建驱动配置文件，从根本上禁用漫游和可能导致死锁的固件特性：
+
 ```bash
-sudo nano /boot/cmdline.txt
-```
-在文件末尾（空格隔开）添加：
-```
-brcmfmac.feature_disable=0x800
+# 禁用漫游，关闭可能导致卡死的固件特性
+echo "options brcmfmac roamoff=1 feature_disable=0x82000" | sudo tee -a /etc/modprobe.d/brcmfmac-optimize.conf
 ```
 
-编辑 `/boot/config.txt`（可选，增强稳定性）：
+> 这些参数在驱动加载时生效，需**断电重启**（拔电源线）后完全生效。
+
+---
+
+#### 4.3 生效
+
 ```bash
-sudo nano /boot/config.txt
-```
-在末尾添加：
-```
-dtoverlay=brcmfmac,ignore_warnings=1
+# 使 systemd 服务生效（已完成）
+# 使 modprobe 配置生效 —— 必须冷启动（拔掉电源线，等待 10 秒后重新插电）
 ```
 
-#### 4.4 生效
-```bash
-sudo chmod +x /etc/rc.local
-```
-然后**拔掉电源线，等待 10 秒后重新插电**（软重启无效，必须冷启动）。
+**软重启（`sudo reboot`）可能不会完全复位芯片，务必拔掉电源线，等待 10 秒后再插电。**
 
 ---
 
