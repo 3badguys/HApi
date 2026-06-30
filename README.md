@@ -208,15 +208,19 @@ HA 重启后，进入 **设置 → 设备与服务 → 添加集成**，搜索 `
 
 ### MQTT 集成
 
-1. HA 页面：**设置 → 设备与服务 → 添加集成**
-2. 搜索 `MQTT`
-3. 服务器地址填 `localhost`，端口 `1883`
-4. 如启用了认证则填入用户名密码
+1.  在 HA 左侧边栏点击 **设置 -> 设备与服务**。
+2.  点击右下角的 **添加集成** 按钮。
+3.  搜索并选择 **MQTT**。
+4.  在配置页面，填入你的 MQTT Broker 信息：
+    *   **Broker**：填写 `localhost`
+    *   **端口**：填写 `1883`
+    *   **用户名**：填写你在 `.env` 文件里设置的 `MQTT_USERNAME`
+    *   **密码**：填写你在 `.env` 文件里设置的 `MQTT_PASSWORD`
 
 ### Zigbee2MQTT
 
 - 确保 Zigbee 协调器已插入宿主机
-- 在 `.env` 中配置 `ZIGBEE_COORDINATOR_PORT`
+- 修改 `.env` 中 `ZIGBEE_COORDINATOR_PORT` 跟 `ZIGBEE_COORDINATOR_BAUDRATE` 等配置
 - Z2M 自动通过 MQTT Discovery 将设备暴露给 HA
 - 管理页面: `http://<宿主机IP>:8080`
 
